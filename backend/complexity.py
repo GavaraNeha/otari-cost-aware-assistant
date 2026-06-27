@@ -15,10 +15,10 @@ def analyze_complexity(prompt: str):
     
     if score < 30:
         return {"level": "simple", "score": score, 
-                "model": "smallest-ai-fast", "cost": 0.001}
+                "model": "electron", "cost": 0.001}
     elif score < 65:
         return {"level": "medium", "score": score, 
-                "model": "smallest-ai-balanced", "cost": 0.003}
+                "model": "electron", "cost": 0.003}
     else:
         return {"level": "complex", "score": score, 
-                "model": "smallest-ai-pro", "cost": 0.008}
+                "model": "electron", "cost": 0.008}
