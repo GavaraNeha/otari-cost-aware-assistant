@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Otari – Cost-Aware AI Assistant</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">⚡ Otari</div>
+      <div class="sidebar-label">Navigation</div>
+      <button class="nav-btn active" onclick="showSection('chat')">💬 Chat</button>
+      <button class="nav-btn" onclick="showSection('dashboard')">📊 Dashboard</button>
+      <button class="nav-btn" onclick="showSection('simulator')">🔬 Route Simulator</button>
+
+      <!-- Budget Meter -->
+      <div class="budget-box">
+        <div class="budget-title">💰 Budget Meter</div>
+        <div class="budget-bar-bg">
+          <div class="budget-bar" id="budgetBar"></div>
+        </div>
+        <div class="budget-text" id="budgetText">$2.00 remaining</div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+
+      <!-- CHAT SECTION -->
+      <div id="chat" class="section active">
+        <h2>💬 Chat with Otari</h2>
+        <div class="chat-box" id="chatBox"></div>
+
+        <!-- Thinking Indicator -->
+        <div class="thinking" id="thinking" style="display:none">
+          <span>🔍 Checking Security...</span>
+          <span>🧠 Analyzing Complexity...</span>
+          <span>📡 Routing to Model...</span>
+          <span>⚡ Generating Response...</span>
+        </div>
+
+        <div class="input-row">
+          <input type="text" id="userInput" 
+                 placeholder="Ask Otari anything..." 
+                 onkeydown="if(event.key==='Enter') sendMessage()"/>
+          <button onclick="sendMessage()">Send ➤</button>
+        </div>
+      </div>
+
+      <!-- DASHBOARD SECTION -->
+      <div id="dashboard" class="section">
+        <h2>📊 Analytics Dashboard</h2>
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card">
+            <div class="stat-value" id="statSpent">$0.00</div>
+            <div class="stat-label">Total Spent</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statRemaining">$2.00</div>
+            <div class="stat-label">Remaining</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statRequests">0</div>
+            <div class="stat-label">Total Requests</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statSaved">~76%</div>
+            <div class="stat-label">Cost Saved vs GPT-4</div>
+          </div>
+        </div>
+        <button onclick="loadStats()" class="refresh-btn">🔄 Refresh Stats</button>
+        <div id="requestLog"></div>
+      </div>
+
+      <!-- SIMULATOR SECTION -->
+      <div id="simulator" class="section">
+        <h2>🔬 Route Simulator</h2>
+        <p style="color:#aaa">See exactly how Otari routes your prompt — before sending!</p>
+        <div class="input-row">
+          <input type="text" id="simInput" 
+                 placeholder="Type any prompt to simulate routing..."/>
+          <button onclick="simulate()">Simulate ➤</button>
+        </div>
+        <div id="simResult" class="sim-result" style="display:none"></div>
+      </div>
+
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
