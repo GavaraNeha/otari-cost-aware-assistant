@@ -38,14 +38,26 @@
         <!-- Thinking Indicator -->
         <div class="thinking" id="thinking" style="display:none">
           <span>🔍 Checking Security...</span>
+          <span>🔒 Masking Sensitive Data...</span>
           <span>🧠 Analyzing Complexity...</span>
           <span>📡 Routing to Model...</span>
           <span>⚡ Generating Response...</span>
         </div>
 
+        <!-- Manual Override -->
+        <div class="override-row">
+          <label style="color:#aaa;font-size:13px">🎛️ Model Override:</label>
+          <select id="modelOverride">
+            <option value="auto">🤖 Auto (Recommended)</option>
+            <option value="simple">⚡ Fast Model (Cheap)</option>
+            <option value="medium">⚖️ Balanced Model</option>
+            <option value="complex">🧠 Pro Model (Best Quality)</option>
+          </select>
+        </div>
+
         <div class="input-row">
-          <input type="text" id="userInput" 
-                 placeholder="Ask Otari anything..." 
+          <input type="text" id="userInput"
+                 placeholder="Ask Otari anything..."
                  onkeydown="if(event.key==='Enter') sendMessage()"/>
           <button onclick="sendMessage()">Send ➤</button>
         </div>
@@ -68,7 +80,7 @@
             <div class="stat-label">Total Requests</div>
           </div>
           <div class="stat-card">
-            <div class="stat-value" id="statSaved">~76%</div>
+            <div class="stat-value" id="statSaved">~97%</div>
             <div class="stat-label">Cost Saved vs GPT-4</div>
           </div>
         </div>
@@ -81,7 +93,7 @@
         <h2>🔬 Route Simulator</h2>
         <p style="color:#aaa">See exactly how Otari routes your prompt — before sending!</p>
         <div class="input-row">
-          <input type="text" id="simInput" 
+          <input type="text" id="simInput"
                  placeholder="Type any prompt to simulate routing..."/>
           <button onclick="simulate()">Simulate ➤</button>
         </div>

@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from security import detect_injection
+from security import detect_injection, mask_sensitive_data
 from complexity import analyze_complexity
 from budget import check_budget, record_spend, get_stats
 from dotenv import load_dotenv
@@ -74,6 +74,9 @@ def generate_smart_response(prompt):
 
     elif any(w in prompt_lower for w in ["summarize", "summary", "tldr", "brief"]):
         return f"Summarization task detected. My complexity scorer analyzed your request and selected the optimal model. I've processed your query: '{prompt[:50]}' through the routing pipeline with budget awareness active."
+
+    elif any(w in prompt_lower for w in ["masked", "email masked", "phone masked"]):
+        return "I noticed your message contained sensitive data. I've automatically masked it before processing to protect your privacy. This is one of Otari's built-in safety features!"
 
     else:
         return f"I've successfully processed your query through Otari's intelligent routing pipeline. Security scan: ✓ Clean. Complexity analyzed. Budget checked. Model selected. Your request '{prompt[:50]}...' has been handled efficiently within the $2 budget constraint."
@@ -164,10 +167,29 @@ def chat():
             "action": "BLOCKED"
         })
 
-    # Step 2: Complexity Analysis
+    # Step 2: Mask Sensitive Data
+    mask_result = mask_sensitive_data(prompt)
+    if mask_result["was_masked"]:
+        prompt = mask_result["masked_prompt"]
+        print("SENSITIVE DATA MASKED:", mask_result["masked_types"])
+
+    # Step 3: Complexity Analysis
     complexity = analyze_complexity(prompt)
 
-    # Step 3: Budget Check
+    # Step 4: Manual Override
+    override = data.get("override", "auto")
+    if override != "auto":
+        override_map = {
+            "simple": {"level": "simple", "model": "electron",
+                      "cost": 0.001, "score": 10},
+            "medium": {"level": "medium", "model": "electron",
+                      "cost": 0.003, "score": 50},
+            "complex": {"level": "complex", "model": "electron",
+                       "cost": 0.008, "score": 90}
+        }
+        complexity = override_map[override]
+
+    # Step 5: Budget Check
     budget = check_budget(complexity["cost"])
     if not budget["allowed"]:
         return jsonify({
@@ -176,10 +198,10 @@ def chat():
             "remaining": budget["remaining"]
         })
 
-    # Step 4: Call AI
+    # Step 6: Call AI
     ai_response = call_smallest_ai(prompt, complexity["model"])
 
-    # Step 5: Record Spend
+    # Step 7: Record Spend
     record_spend(complexity["cost"], prompt, complexity["model"])
 
     response_text = (
@@ -199,7 +221,9 @@ def chat():
         "cost": complexity["cost"],
         "budget_remaining": budget["remaining"],
         "security_status": "CLEAN",
-        "routing_reason": f"Prompt complexity score: {complexity['score']}/100"
+        "was_masked": mask_result["was_masked"],
+        "masked_types": mask_result["masked_types"],
+        "routing_reason": f"{'[MANUAL OVERRIDE] ' if override != 'auto' else ''}Prompt complexity score: {complexity['score']}/100"
     })
 
 

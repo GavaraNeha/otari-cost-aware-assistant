@@ -1,4 +1,5 @@
 const API = 'http://localhost:5000';
+let conversationHistory = [];
 
 function showSection(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -10,20 +11,23 @@ function showSection(id) {
 
 async function sendMessage() {
   const input = document.getElementById('userInput');
+  const override = document.getElementById('modelOverride').value;
   const msg = input.value.trim();
   if (!msg) return;
 
   appendMessage(msg, 'user');
   input.value = '';
-
-  // Show thinking animation
   document.getElementById('thinking').style.display = 'flex';
 
   try {
     const res = await fetch(`${API}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: msg })
+      body: JSON.stringify({
+        message: msg,
+        override: override,
+        history: conversationHistory.slice(-6)
+      })
     });
     const data = await res.json();
     document.getElementById('thinking').style.display = 'none';
@@ -35,6 +39,11 @@ async function sendMessage() {
     } else {
       appendBot(data);
       updateBudget(data.budget_remaining);
+      // Store in conversation history
+      conversationHistory.push(
+        { role: "user", content: msg },
+        { role: "assistant", content: data.response }
+      );
     }
   } catch (e) {
     document.getElementById('thinking').style.display = 'none';
@@ -55,6 +64,15 @@ function appendBot(data) {
   const box = document.getElementById('chatBox');
   const div = document.createElement('div');
   div.className = 'message bot';
+
+  const maskedBadge = data.was_masked
+    ? `&nbsp;|&nbsp; 🔒 Masked: <b>${data.masked_types.join(', ')}</b>`
+    : '';
+
+  const overrideBadge = data.routing_reason.includes('MANUAL OVERRIDE')
+    ? `&nbsp;|&nbsp; 🎛️ <b>Manual Override</b>`
+    : '';
+
   div.innerHTML = `
     <div>${data.response}</div>
     <div class="meta">
@@ -62,6 +80,8 @@ function appendBot(data) {
       🧠 Complexity: <b>${data.complexity}</b> (${data.complexity_score}/100) &nbsp;|&nbsp;
       💰 Cost: <b>$${data.cost}</b> &nbsp;|&nbsp;
       💵 Remaining: <b>$${data.budget_remaining}</b>
+      ${maskedBadge}
+      ${overrideBadge}
     </div>
     <div class="meta">📡 ${data.routing_reason}</div>
   `;
@@ -126,11 +146,11 @@ async function simulate() {
   const score = Math.min(100, (words * 2) + (hits * 15));
 
   const threats = ['ignore previous','system prompt','jailbreak',
-    'forget instructions','you are now','act as'];
+    'forget instructions','you are now','act as','bypass','override'];
   const threat = threats.find(t => input.toLowerCase().includes(t));
 
   const level = score < 30 ? 'Simple' : score < 65 ? 'Medium' : 'Complex';
-  const model = score < 30 ? 'smallest-ai-fast' : score < 65 ? 'smallest-ai-balanced' : 'smallest-ai-pro';
+  const model = score < 30 ? 'electron-fast' : score < 65 ? 'electron-balanced' : 'electron-pro';
   const cost = score < 30 ? 0.001 : score < 65 ? 0.003 : 0.008;
   const gpt4cost = 0.03;
 

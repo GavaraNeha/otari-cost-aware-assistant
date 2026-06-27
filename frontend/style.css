@@ -114,7 +114,7 @@ h2 {
   border: 1px solid #222;
   border-radius: 12px;
   padding: 16px;
-  height: 380px;
+  height: 340px;
   overflow-y: auto;
   margin-bottom: 12px;
   display: flex;
@@ -158,7 +158,7 @@ h2 {
 
 .thinking {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 10px;
 }
@@ -178,6 +178,30 @@ h2 {
   50% { opacity: 1; }
 }
 
+/* OVERRIDE ROW */
+.override-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 8px;
+}
+
+.override-row select {
+  background: #1a1a1a;
+  color: #00ff88;
+  border: 1px solid #333;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+}
+
+.override-row select:focus {
+  border-color: #00ff88;
+}
+
+/* INPUT ROW */
 .input-row {
   display: flex;
   gap: 10px;
