@@ -9,7 +9,7 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-SMALLEST_API_KEY = os.getenv("SMALLEST_API_KEY", "your-api-key-here")
+SMALLEST_API_KEY = os.getenv("SMALLEST_API_KEY", "sk_e9ce0e8475f0c4edb16fc8d050061f97")
 SMALLEST_API_URL = "https://api.smallest.ai/v1/chat"
 
 def call_smallest_ai(prompt, model):
