@@ -1,11 +1,11 @@
 const API = 'http://localhost:5000';
 let conversationHistory = [];
 
-function showSection(id) {
+function showSection(id, btn) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  event.target.classList.add('active');
+  if (btn) btn.classList.add('active');
   if (id === 'dashboard') loadStats();
 }
 
@@ -17,7 +17,10 @@ async function sendMessage() {
 
   appendMessage(msg, 'user');
   input.value = '';
+
+  // Show thinking
   document.getElementById('thinking').style.display = 'flex';
+  document.getElementById('inputArea').classList.add('thinking-active');
 
   try {
     const res = await fetch(`${API}/chat`, {
@@ -30,7 +33,9 @@ async function sendMessage() {
       })
     });
     const data = await res.json();
+
     document.getElementById('thinking').style.display = 'none';
+    document.getElementById('inputArea').classList.remove('thinking-active');
 
     if (data.blocked) {
       appendBlocked(data);
@@ -39,7 +44,6 @@ async function sendMessage() {
     } else {
       appendBot(data);
       updateBudget(data.budget_remaining);
-      // Store in conversation history
       conversationHistory.push(
         { role: "user", content: msg },
         { role: "assistant", content: data.response }
@@ -47,6 +51,7 @@ async function sendMessage() {
     }
   } catch (e) {
     document.getElementById('thinking').style.display = 'none';
+    document.getElementById('inputArea').classList.remove('thinking-active');
     appendMessage('❌ Backend not running. Start Flask server!', 'bot');
   }
 }
@@ -55,7 +60,7 @@ function appendMessage(text, type) {
   const box = document.getElementById('chatBox');
   const div = document.createElement('div');
   div.className = `message ${type}`;
-  div.textContent = text;
+  div.innerHTML = `<div class="bubble">${text}</div>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
@@ -66,25 +71,26 @@ function appendBot(data) {
   div.className = 'message bot';
 
   const maskedBadge = data.was_masked
-    ? `&nbsp;|&nbsp; 🔒 Masked: <b>${data.masked_types.join(', ')}</b>`
+    ? `&nbsp;|&nbsp; 🔒 <b>${data.masked_types.join(', ')}</b>`
     : '';
 
-  const overrideBadge = data.routing_reason.includes('MANUAL OVERRIDE')
-    ? `&nbsp;|&nbsp; 🎛️ <b>Manual Override</b>`
+  const overrideBadge = data.routing_reason && data.routing_reason.includes('MANUAL')
+    ? `&nbsp;|&nbsp; 🎛️ <b>Override</b>`
     : '';
 
   div.innerHTML = `
-    <div>${data.response}</div>
-    <div class="meta">
-      🤖 Model: <b>${data.model_used}</b> &nbsp;|&nbsp;
-      🧠 Complexity: <b>${data.complexity}</b> (${data.complexity_score}/100) &nbsp;|&nbsp;
-      💰 Cost: <b>$${data.cost}</b> &nbsp;|&nbsp;
-      💵 Remaining: <b>$${data.budget_remaining}</b>
-      ${maskedBadge}
-      ${overrideBadge}
-    </div>
-    <div class="meta">📡 ${data.routing_reason}</div>
-  `;
+    <div class="bubble">
+      <div>${data.response}</div>
+      <div class="meta">
+        🤖 Model: <b>${data.model_used}</b> &nbsp;|&nbsp;
+        🧠 <b>${data.complexity}</b> (${data.complexity_score}/100) &nbsp;|&nbsp;
+        💰 <b>$${data.cost}</b> &nbsp;|&nbsp;
+        💵 <b>$${data.budget_remaining}</b>
+        ${maskedBadge}
+        ${overrideBadge}
+      </div>
+      <div class="meta">📡 ${data.routing_reason}</div>
+    </div>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
@@ -94,10 +100,11 @@ function appendBlocked(data) {
   const div = document.createElement('div');
   div.className = 'message blocked';
   div.innerHTML = `
-    🚫 <b>BLOCKED</b><br>
-    ⚠️ ${data.reason}<br>
-    <div class="meta">Risk Score: ${data.risk_score}/100 | Action: ${data.action}</div>
-  `;
+    <div class="bubble">
+      🚫 <b>BLOCKED</b><br>
+      ⚠️ ${data.reason}<br>
+      <div class="meta">Risk Score: ${data.risk_score}/100 | Action: ${data.action}</div>
+    </div>`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
@@ -107,8 +114,13 @@ function updateBudget(remaining) {
   const bar = document.getElementById('budgetBar');
   const text = document.getElementById('budgetText');
   bar.style.width = pct + '%';
-  bar.style.background = pct > 50 ? '#00ff88' : pct > 25 ? '#ffaa00' : '#ff4444';
-  text.style.color = pct > 50 ? '#00ff88' : pct > 25 ? '#ffaa00' : '#ff4444';
+  if (pct > 50) {
+    bar.style.background = 'linear-gradient(90deg, #8B5CF6, #EC4899)';
+  } else if (pct > 25) {
+    bar.style.background = 'linear-gradient(90deg, #f59e0b, #ef4444)';
+  } else {
+    bar.style.background = '#ef4444';
+  }
   text.textContent = `$${remaining.toFixed(4)} remaining`;
 }
 
@@ -121,11 +133,11 @@ async function loadStats() {
     document.getElementById('statRequests').textContent = data.requests;
 
     const log = document.getElementById('requestLog');
-    log.innerHTML = '<h3 style="color:#aaa;margin-bottom:12px">Request History</h3>';
+    log.innerHTML = '<h3 style="color:#666;margin-bottom:12px;font-size:13px;text-transform:uppercase;letter-spacing:1px">Request History</h3>';
     data.log.forEach((item, i) => {
       log.innerHTML += `
         <div class="log-item">
-          <span>#${i+1} — ${item.prompt_preview}...</span>
+          <span style="color:#94a3b8">#${i+1} — ${item.prompt_preview}...</span>
           <span class="log-model">${item.model}</span>
           <span class="log-cost">$${item.cost}</span>
         </div>`;
@@ -175,7 +187,7 @@ async function simulate() {
     <div class="sim-step">
       <div class="sim-icon">💰</div>
       <div class="sim-label">Estimated Cost</div>
-      <div class="sim-value">$${cost} <span style="color:#555;font-size:11px">(GPT-4 would cost $${gpt4cost})</span></div>
+      <div class="sim-value">$${cost} <span style="color:#4a5568;font-size:11px">(GPT-4 would cost $${gpt4cost})</span></div>
     </div>
     <div class="sim-step">
       <div class="sim-icon">📉</div>
@@ -185,5 +197,5 @@ async function simulate() {
   `;
 }
 
-// Load budget on start
+// Init
 updateBudget(2.0);
