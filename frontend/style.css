@@ -532,3 +532,4 @@ h2 {
 .sim-value { font-weight: 600; font-size: 13px; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .sim-value.red { background: none; -webkit-text-fill-color: #ff6b6b; color: #ff6b6b; }
 .sim-value.yellow { background: none; -webkit-text-fill-color: #f59e0b; color: #f59e0b; }
+
