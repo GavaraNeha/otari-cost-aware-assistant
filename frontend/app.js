@@ -18,7 +18,6 @@ async function sendMessage() {
   appendMessage(msg, 'user');
   input.value = '';
 
-  // Show thinking
   document.getElementById('thinking').style.display = 'flex';
   document.getElementById('inputArea').classList.add('thinking-active');
 
@@ -197,5 +196,29 @@ async function simulate() {
   `;
 }
 
-// Init
+// ── THEME TOGGLE ──
+function toggleTheme() {
+  const body = document.body;
+  const btn = document.getElementById('themeToggle');
+  if (body.classList.contains('light')) {
+    body.classList.remove('light');
+    btn.textContent = '🌙 Dark Mode';
+    localStorage.setItem('theme', 'dark');
+  } else {
+    body.classList.add('light');
+    btn.textContent = '☀️ Light Mode';
+    localStorage.setItem('theme', 'light');
+  }
+}
+
+// ── INIT ──
 updateBudget(2.0);
+
+// Load saved theme
+window.addEventListener('DOMContentLoaded', () => {
+  if (localStorage.getItem('theme') === 'light') {
+    document.body.classList.add('light');
+    const btn = document.getElementById('themeToggle');
+    if (btn) btn.textContent = '☀️ Light Mode';
+  }
+});
