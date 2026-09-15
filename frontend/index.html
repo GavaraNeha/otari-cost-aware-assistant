@@ -6,6 +6,7 @@
   <title>Otari – Cost-Aware AI Assistant</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
   <div class="app">
@@ -79,12 +80,16 @@
           </div>
         </div>
 
+        <div class="voice-status" id="voiceStatus" style="display:none;"></div>
         <div class="input-area" id="inputArea">
+          <button class="mic-btn" id="micBtn" onclick="toggleRecording('userInput')" title="Speak with Smallest AI STT">
+            🎙️
+          </button>
           <input type="text" id="userInput"
                  class="chat-input"
                  placeholder="Ask Otari anything..."
                  onkeydown="if(event.key==='Enter') sendMessage()"/>
-          <button class="send-btn" onclick="sendMessage()">
+          <button class="send-btn" onclick="sendMessage()" title="Send Message">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
