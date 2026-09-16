@@ -130,7 +130,7 @@ def analyze_complexity(prompt: str):
 
     if score < 30:
         return {"level": "simple", "score": score,
-                "model": "nvidia/nemotron-3.5-lightning:free", "cost": 0.001}
+                "model": "liquid/lfm-2.5-2.6b:free", "cost": 0.001}
     elif score < 65:
         return {"level": "medium", "score": score,
                 "model": "dots-studio/dots-3-note-preview:free", "cost": 0.003}

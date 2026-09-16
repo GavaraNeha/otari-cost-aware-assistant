@@ -208,139 +208,97 @@ def stream_model_response(messages, model, max_tokens=None):
         headers["HTTP-Referer"] = "http://localhost:5000"
         headers["X-Title"] = "Otari Cost-Aware Assistant"
 
-    # --- Attempt 1: Real Token Streaming ---
-    try:
-        payload = {
-            "model": target_model,
-            "messages": messages,
-            "max_tokens": max_tok,
-            "temperature": LLM_TEMPERATURE,
-            "stream": True,
-            "stream_options": {"include_usage": True}
-        }
-        resp = requests.post(
-            target_url,
-            json=payload,
-            headers=headers,
-            timeout=30,
-            stream=True
-        )
-        resp.encoding = "utf-8"
+    # --- Streaming Execution with Fast Fallback & 20s Hard Timeout ---
+    models_to_try = [target_model]
+    if target_model != "openrouter/free":
+        models_to_try.append("openrouter/free")
 
-        if resp.status_code == 200:
-            full_text = ""
-            got_any_content = False
-            for raw_bytes in resp.iter_lines(decode_unicode=False):
-                if not raw_bytes:
-                    continue
-                raw_line = raw_bytes.decode("utf-8", errors="replace")
-                line = raw_line.strip()
-                if not line.startswith("data:"):
-                    continue
-                data_str = line[len("data:"):].strip()
-                if data_str == "[DONE]":
-                    break
-                try:
-                    chunk = json.loads(data_str)
-                    if isinstance(chunk, dict):
-                        if chunk.get("model"):
-                            actual_model_used = chunk.get("model")
-                        if chunk.get("usage"):
-                            actual_usage = chunk.get("usage")
-                    delta = (
-                        chunk.get("choices", [{}])[0]
-                        .get("delta", {})
-                        .get("content")
-                    )
-                    if delta is None:
+    last_error = ""
+
+    for current_model in models_to_try:
+        try:
+            payload = {
+                "model": current_model,
+                "messages": messages,
+                "max_tokens": max_tok,
+                "temperature": LLM_TEMPERATURE,
+                "stream": True,
+                "stream_options": {"include_usage": True}
+            }
+            resp = requests.post(
+                target_url,
+                json=payload,
+                headers=headers,
+                timeout=(5, 20),
+                stream=True
+            )
+            resp.encoding = "utf-8"
+
+            if resp.status_code == 200:
+                full_text = ""
+                got_any_content = False
+                actual_model_used = current_model
+                start_time = time.time()
+
+                for raw_bytes in resp.iter_lines(decode_unicode=False):
+                    if time.time() - start_time > 25:
+                        break  # Enforce hard 25s total stream ceiling
+
+                    if not raw_bytes:
+                        continue
+                    raw_line = raw_bytes.decode("utf-8", errors="replace")
+                    line = raw_line.strip()
+                    if not line.startswith("data:"):
+                        continue
+                    data_str = line[len("data:"):].strip()
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(data_str)
+                        if isinstance(chunk, dict):
+                            if chunk.get("model"):
+                                actual_model_used = chunk.get("model")
+                            if chunk.get("usage"):
+                                actual_usage = chunk.get("usage")
                         delta = (
                             chunk.get("choices", [{}])[0]
-                            .get("message", {})
+                            .get("delta", {})
                             .get("content")
                         )
-                    if delta:
-                        full_text += delta
-                        got_any_content = True
-                        yield ("chunk", delta)
-                except (ValueError, KeyError, IndexError):
-                    continue
+                        if delta is None:
+                            delta = (
+                                chunk.get("choices", [{}])[0]
+                                .get("message", {})
+                                .get("content")
+                            )
+                        if delta:
+                            full_text += delta
+                            got_any_content = True
+                            yield ("chunk", delta)
+                    except (ValueError, KeyError, IndexError):
+                        continue
 
-            if got_any_content:
-                return full_text, True, actual_model_used, actual_usage
+                if got_any_content:
+                    return full_text, True, actual_model_used, actual_usage
 
-        # Handle explicit API status codes immediately
-        if resp.status_code != 200:
-            try:
-                err_data = resp.json()
-                err_detail = (
-                    err_data.get("error", {}).get("message")
-                    if isinstance(err_data.get("error"), dict)
-                    else err_data.get("error") or err_data.get("message") or resp.text
-                )
-            except Exception:
-                err_detail = resp.text[:200]
+            if resp.status_code != 200:
+                try:
+                    err_data = resp.json()
+                    err_detail = (
+                        err_data.get("error", {}).get("message")
+                        if isinstance(err_data.get("error"), dict)
+                        else err_data.get("error") or err_data.get("message") or resp.text
+                    )
+                except Exception:
+                    err_detail = resp.text[:200]
+                last_error = f"⚠️ LLM Provider ({LLM_PROVIDER}) returned HTTP {resp.status_code}: {err_detail}"
 
-            error_notice = f"⚠️ LLM Provider ({LLM_PROVIDER}) returned HTTP {resp.status_code}: {err_detail}"
-            yield ("chunk", error_notice)
-            return error_notice, False, None, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        except requests.exceptions.RequestException as e:
+            last_error = f"⚠️ Connection/Timeout reaching LLM Provider ({target_url}): {str(e)}"
 
-    except requests.exceptions.RequestException:
-        pass
-
-    # --- Attempt 2: Non-Streaming Fallback ---
-    try:
-        payload = {"model": target_model, "messages": messages, "stream": False}
-        resp = requests.post(
-            target_url,
-            json=payload,
-            headers=headers,
-            timeout=30
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            if isinstance(data, dict):
-                if data.get("model"):
-                    actual_model_used = data.get("model")
-                if data.get("usage"):
-                    actual_usage = data.get("usage")
-            full_text = (
-                data.get("choices", [{}])[0].get("message", {}).get("content")
-                or data.get("output")
-                or data.get("text")
-            )
-            if full_text:
-                words = full_text.split(" ")
-                buf = ""
-                for i, w in enumerate(words):
-                    buf += (w + " ")
-                    if len(buf) > 30 or i == len(words) - 1:
-                        yield ("chunk", buf)
-                        buf = ""
-                return full_text, True, actual_model_used, actual_usage
-
-        if resp.status_code != 200:
-            try:
-                err_data = resp.json()
-                err_detail = (
-                    err_data.get("error", {}).get("message")
-                    if isinstance(err_data.get("error"), dict)
-                    else err_data.get("error") or err_data.get("message") or resp.text
-                )
-            except Exception:
-                err_detail = resp.text[:200]
-
-            error_notice = f"⚠️ LLM Provider ({LLM_PROVIDER}) returned HTTP {resp.status_code}: {err_detail}"
-            yield ("chunk", error_notice)
-            return error_notice, False, None, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-
-    except requests.exceptions.RequestException as e:
-        error_notice = f"⚠️ Connection error reaching LLM Provider ({target_url}): {str(e)}"
-        yield ("chunk", error_notice)
-        return error_notice, False, None, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-
-    notice = f"⚠️ LLM Provider ({LLM_PROVIDER}) response was empty or unparseable."
-    yield ("chunk", notice)
-    return notice, False, None, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    # If all model attempts fail:
+    yield ("chunk", last_error)
+    return last_error, False, None, {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
 
 # -----------------------------
@@ -380,7 +338,7 @@ def chat():
     override = data.get("override", "auto")
     if override != "auto":
         override_map = {
-            "simple": {"level": "simple", "model": "nvidia/nemotron-3.5-lightning:free", "cost": 0.001, "score": complexity["score"]},
+            "simple": {"level": "simple", "model": "liquid/lfm-2.5-2.6b:free", "cost": 0.001, "score": complexity["score"]},
             "medium": {"level": "medium", "model": "dots-studio/dots-3-note-preview:free", "cost": 0.003, "score": complexity["score"]},
             "complex": {"level": "complex", "model": "nvidia/nemotron-3-ultra-550b-a55b:free", "cost": 0.008, "score": complexity["score"]},
         }
