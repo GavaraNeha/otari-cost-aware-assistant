@@ -210,7 +210,9 @@ def stream_model_response(messages, model, max_tokens=None):
 
     # --- Streaming Execution with Fast Fallback & 20s Hard Timeout ---
     models_to_try = [target_model]
-    if target_model != "openrouter/free":
+    if "openai" in target_model:
+        models_to_try.append("liquid/lfm-2.5-2.6b:free")
+    if "openrouter/free" not in models_to_try:
         models_to_try.append("openrouter/free")
 
     last_error = ""
@@ -338,9 +340,9 @@ def chat():
     override = data.get("override", "auto")
     if override != "auto":
         override_map = {
-            "simple": {"level": "simple", "model": "liquid/lfm-2.5-2.6b:free", "cost": 0.001, "score": complexity["score"]},
-            "medium": {"level": "medium", "model": "dots-studio/dots-3-note-preview:free", "cost": 0.003, "score": complexity["score"]},
-            "complex": {"level": "complex", "model": "nvidia/nemotron-3-ultra-550b-a55b:free", "cost": 0.008, "score": complexity["score"]},
+            "simple": {"level": "simple", "model": "openai/gpt-4o-mini", "cost": 0.001, "score": complexity["score"]},
+            "medium": {"level": "medium", "model": "openai/gpt-4o-mini", "cost": 0.003, "score": complexity["score"]},
+            "complex": {"level": "complex", "model": "openai/gpt-4o", "cost": 0.008, "score": complexity["score"]},
         }
         if override in override_map:
             complexity = override_map[override]
@@ -365,7 +367,7 @@ def chat():
         full_text = ""
         provider_reached = True
         real_model_used = complexity["model"]
-        tier_max_tokens = 250 if complexity["level"] == "simple" else (600 if complexity["level"] == "medium" else 1500)
+        tier_max_tokens = 300 if complexity["level"] == "simple" else (700 if complexity["level"] == "medium" else 1500)
         gen = stream_model_response(messages, complexity["model"], max_tokens=tier_max_tokens)
         try:
             while True:

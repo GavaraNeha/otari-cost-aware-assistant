@@ -130,10 +130,10 @@ def analyze_complexity(prompt: str):
 
     if score < 30:
         return {"level": "simple", "score": score,
-                "model": "liquid/lfm-2.5-2.6b:free", "cost": 0.001}
+                "model": "openai/gpt-4o-mini", "cost": 0.001}
     elif score < 65:
         return {"level": "medium", "score": score,
-                "model": "dots-studio/dots-3-note-preview:free", "cost": 0.003}
+                "model": "openai/gpt-4o-mini", "cost": 0.003}
     else:
         return {"level": "complex", "score": score,
-                "model": "nvidia/nemotron-3-ultra-550b-a55b:free", "cost": 0.008}
+                "model": "openai/gpt-4o", "cost": 0.008}
