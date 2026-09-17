@@ -262,6 +262,11 @@ function finalizeBotMessage(shell, data) {
   const billedCost = typeof data.cost === 'number' ? data.cost.toFixed(4) : '0.0000';
   const budgetRem = typeof data.budget_remaining === 'number' ? Math.max(0, data.budget_remaining).toFixed(2) : '2.00';
 
+  const hasSlideOutline = /[sS]lide\s*\d+/i.test(shell.rawText) || /presentation|powerpoint|slides/i.test(shell.rawText);
+  const pptButton = hasSlideOutline
+    ? `<button class="ppt-btn" onclick="triggerPPTDownload(this)" title="Download real PowerPoint Presentation (.pptx)">📊 Download PPT</button>`
+    : '';
+
   shell.metaEl.style.display = 'block';
   shell.metaEl.innerHTML = `
     <div class="meta-badge-row">
@@ -288,9 +293,52 @@ function finalizeBotMessage(shell, data) {
       </div>
     </details>
     <button class="tts-btn" onclick="playTTS(this)" title="Smallest AI Text-to-Speech">🔊 Listen</button>
+    ${pptButton}
   `;
+  // Store raw text on metaEl for PPT download
+  shell.metaEl.dataset.rawText = shell.rawText;
   const box = document.getElementById('chatBox');
   box.scrollTop = box.scrollHeight;
+}
+
+async function triggerPPTDownload(btn) {
+  const metaEl = btn.closest('.meta');
+  const rawText = metaEl ? metaEl.dataset.rawText : '';
+  if (!rawText) {
+    alert('No slide content found to generate PPT.');
+    return;
+  }
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = '⏳ Generating PPT...';
+  try {
+    const response = await fetch(`${API}/generate-ppt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: rawText, title: 'Otari Presentation' })
+    });
+
+    if (!response.ok) {
+      alert('Failed to generate PowerPoint file.');
+      return;
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Otari_Presentation.pptx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('PPT Download Error:', err);
+    alert('Error downloading PPT file: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
 }
 
 function appendBlocked(data) {
